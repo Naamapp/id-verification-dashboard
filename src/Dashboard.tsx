@@ -1,9 +1,48 @@
 import React, { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+// Supabase setup
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Upload helper function
+async function uploadImageAndStoreURL(
+  file: File,
+  userId: string,
+  type: "id" | "selfie"
+): Promise<string | null> {
+  const fileName = `${userId}/${type}-${Date.now()}.jpg`;
+
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from("id-uploads")
+    .upload(fileName, file);
+
+  if (uploadError) {
+    console.error("❌ Upload failed:", uploadError.message);
+    return null;
+  }
+
+  const publicUrl = supabase.storage
+    .from("id-uploads")
+    .getPublicUrl(fileName).data.publicUrl;
+
+  const updatePayload =
+    type === "id"
+      ? { id_image_path: fileName }
+      : { selfie_image_path: fileName };
+
+  const { error: updateError } = await supabase
+    .from("id_upload_requests")
+    .update(updatePayload)
+    .eq("user_id", userId);
+
+  if (updateError) {
+    console.error("❌ Failed to update DB with image path:", updateError.message);
+  }
+
+  return publicUrl;
+}
 
 export default function Dashboard() {
   const [requests, setRequests] = useState<any[]>([]);
@@ -21,7 +60,7 @@ export default function Dashboard() {
       .select("*")
       .order("created_at", { ascending: false });
 
-    console.log("🔍 Fetched requests from Supabase:", data); // 👈 Raw data logging
+    console.log("🔍 Fetched requests from Supabase:", data);
 
     if (error) {
       console.error("Error fetching data:", error);
