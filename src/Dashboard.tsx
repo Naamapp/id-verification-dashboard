@@ -21,11 +21,12 @@ export default function Dashboard() {
       .select("*")
       .order("created_at", { ascending: false });
 
+    console.log("🔍 Fetched requests from Supabase:", data); // 👈 Raw data logging
+
     if (error) {
       console.error("Error fetching data:", error);
       setRequests([]);
     } else {
-      console.log("Fetched data:", data);
       setRequests(data || []);
     }
     setLoading(false);
